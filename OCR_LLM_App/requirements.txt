@@ -1,0 +1,6 @@
+streamlit
+numpy
+pillow
+easyocr
+requests
+tensorflow
