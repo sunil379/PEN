@@ -1,10 +1,10 @@
-# gui.py
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageEnhance
 from preprocessing import preprocess_image
 from ocr import extract_text
 from llm_integration import correct_text
 from chatbot import start_chatbot
+from streamlit_cropper import st_cropper
 
 def show_gui():
     # Inject custom CSS
@@ -32,6 +32,12 @@ def show_gui():
         </style>
         """, unsafe_allow_html=True)
 
+    # Initialize session state
+    if 'extracted_text' not in st.session_state:
+        st.session_state.extracted_text = ""
+    if 'corrected_text' not in st.session_state:
+        st.session_state.corrected_text = ""
+
     uploaded_image = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
     ocr_language = st.selectbox("Select OCR Language", options=["en", "hi", "mr"])
@@ -39,21 +45,43 @@ def show_gui():
 
     if uploaded_image is not None:
         image = Image.open(uploaded_image)
-        st.image(image, caption='Uploaded Image', use_column_width=True)
 
-        processed_image = preprocess_image(image)
+        # Cropping tool
+        st.write("Crop the image (optional):")
+        cropped_image = st_cropper(image, realtime_update=True, box_color='#6C63FF')
 
-        st.write("Extracting text...")
-        extracted_text = extract_text(processed_image, [ocr_language])
-        extracted_text_area = st.text_area("Extracted Text", extracted_text, height=150)
+        # Brightness adjustment
+        st.write("Adjust brightness (optional):")
+        brightness = st.slider("Brightness", 0.0, 2.0, 1.0)
+        enhancer = ImageEnhance.Brightness(cropped_image)
+        enhanced_image = enhancer.enhance(brightness)
 
-        st.write("Correcting text using Cohere API...")
-        corrected_text = correct_text(extracted_text, llm_language)
-        corrected_text_area = st.text_area("Corrected Text", corrected_text, height=150)
+        st.image(enhanced_image, caption='Enhanced Image', use_column_width=True)
+
+        # "Submit" button to confirm enhancement
+        if st.button("Submit Enhanced Image"):
+            # Process the enhanced image
+            processed_image = preprocess_image(enhanced_image)
+
+            st.write("Extracting text...")
+            st.session_state.extracted_text = extract_text(processed_image, [ocr_language])
+
+            st.write("Correcting text using Cohere API...")
+            st.session_state.corrected_text = correct_text(st.session_state.extracted_text, llm_language)
+
+    # Display the extracted text if available
+    if st.session_state.extracted_text:
+        st.text_area("Extracted Text", st.session_state.extracted_text, height=150)
+
+    # Display the corrected text if available
+    if st.session_state.corrected_text:
+        st.text_area("Corrected Text", st.session_state.corrected_text, height=150)
 
         if st.button("Copy Corrected Text"):
             st.write("Corrected text copied to clipboard.")
-            st.code(corrected_text, language='')
+            st.code(st.session_state.corrected_text, language='')
 
+    # Start chatbot with the corrected text
+    if st.session_state.corrected_text:
         st.write("## Chat with Corrected Text")
-        start_chatbot(corrected_text, llm_language)
+        start_chatbot(st.session_state.corrected_text, llm_language)

@@ -24,7 +24,6 @@ def extract_text(image, reader):
 
 
 # Function to correct text using Cohere API
-# Function to correct text using Cohere API
 def correct_text(text, lang_code):
     api_key = 'jcO0ca6ueYqETK143Z8plXWv3rHe4FYALubGUyr7'
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
@@ -60,6 +59,12 @@ def correct_text(text, lang_code):
 # Streamlit app
 st.title('Handwritten Text Extraction and Correction')
 
+# Initialize session state
+if 'extracted_text' not in st.session_state:
+    st.session_state.extracted_text = ""
+if 'corrected_text' not in st.session_state:
+    st.session_state.corrected_text = ""
+
 uploaded_image = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
 if uploaded_image is not None:
@@ -76,44 +81,52 @@ if uploaded_image is not None:
     # Preprocess the image before extracting text
     processed_image = preprocess_image(image)
 
-    st.write("Extracting text...")
-    extracted_text = extract_text(processed_image, reader)
-    extracted_text_area = st.text_area("Extracted Text", extracted_text, height=300)
+    # Add a "Submit" button to confirm the enhancement
+    if st.button("Submit Enhanced Image"):
+        st.write("Extracting text...")
+        st.session_state.extracted_text = extract_text(processed_image, reader)
+    
+    # Display the extracted text if available
+    if st.session_state.extracted_text:
+        st.text_area("Extracted Text", st.session_state.extracted_text, height=300)
 
-    # Button to copy the extracted text to the clipboard
-    if st.button("Copy Extracted Text"):
-        st.markdown(f"""
-            <script>
-            function copyToClipboard(text) {{
-                var dummy = document.createElement("textarea");
-                document.body.appendChild(dummy);
-                dummy.value = text;
-                dummy.select();
-                document.execCommand("copy");
-                document.body.removeChild(dummy);
-                alert("Extracted text copied to clipboard");
-            }}
-            copyToClipboard(`{extracted_text}`);
-            </script>
-        """, unsafe_allow_html=True)
+        # Button to copy the extracted text to the clipboard
+        if st.button("Copy Extracted Text"):
+            st.markdown(f"""
+                <script>
+                function copyToClipboard(text) {{
+                    var dummy = document.createElement("textarea");
+                    document.body.appendChild(dummy);
+                    dummy.value = text;
+                    dummy.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(dummy);
+                    alert("Extracted text copied to clipboard");
+                }}
+                copyToClipboard(`{st.session_state.extracted_text}`);
+                </script>
+            """, unsafe_allow_html=True)
 
-    st.write("Correcting text using Cohere API...")
-    corrected_text = correct_text(extracted_text, lang_code)
-    corrected_text_area = st.text_area("Corrected Text", corrected_text, height=300)
+        st.write("Correcting text using Cohere API...")
+        st.session_state.corrected_text = correct_text(st.session_state.extracted_text, lang_code)
+    
+    # Display the corrected text if available
+    if st.session_state.corrected_text:
+        st.text_area("Corrected Text", st.session_state.corrected_text, height=300)
 
-    # Button to copy the corrected text to the clipboard
-    if st.button("Copy Corrected Text"):
-        st.markdown(f"""
-            <script>
-            function copyToClipboard(text) {{
-                var dummy = document.createElement("textarea");
-                document.body.appendChild(dummy);
-                dummy.value = text;
-                dummy.select();
-                document.execCommand("copy");
-                document.body.removeChild(dummy);
-                alert("Corrected text copied to clipboard");
-            }}
-            copyToClipboard(`{corrected_text}`);
-            </script>
-        """, unsafe_allow_html=True)
+        # Button to copy the corrected text to the clipboard
+        if st.button("Copy Corrected Text"):
+            st.markdown(f"""
+                <script>
+                function copyToClipboard(text) {{
+                    var dummy = document.createElement("textarea");
+                    document.body.appendChild(dummy);
+                    dummy.value = text;
+                    dummy.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(dummy);
+                    alert("Corrected text copied to clipboard");
+                }}
+                copyToClipboard(`{st.session_state.corrected_text}`);
+                </script>
+            """, unsafe_allow_html=True)
