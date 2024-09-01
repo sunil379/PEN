@@ -4,3 +4,4 @@ pillow
 easyocr
 requests
 tensorflow
+streamlit-cropper
