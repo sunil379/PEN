@@ -44,30 +44,46 @@ def show_gui():
     llm_language = st.selectbox("Select LLM Correction Language", options=["English", "Hindi", "Marathi"])
 
     if uploaded_image is not None:
-        image = Image.open(uploaded_image)
+        try:
+            image = Image.open(uploaded_image)
 
-        # Cropping tool
-        st.write("Crop the image (optional):")
-        cropped_image = st_cropper(image, realtime_update=True, box_color='#6C63FF')
+            # Cropping tool
+            st.write("Crop the image (optional):")
+            cropped_image = st_cropper(image, realtime_update=True, box_color='#6C63FF')
 
-        # Brightness adjustment
-        st.write("Adjust brightness (optional):")
-        brightness = st.slider("Brightness", 0.0, 2.0, 1.0)
-        enhancer = ImageEnhance.Brightness(cropped_image)
-        enhanced_image = enhancer.enhance(brightness)
+            # Validate cropped image
+            if cropped_image is None:
+                st.error("Cropped image is invalid. Please try again.")
+                return
 
-        st.image(enhanced_image, caption='Enhanced Image', use_column_width=True)
+            # Brightness adjustment
+            st.write("Adjust brightness (optional):")
+            brightness = st.slider("Brightness", 0.0, 2.0, 1.0)
 
-        # "Submit" button to confirm enhancement
-        if st.button("Submit Enhanced Image"):
-            # Process the enhanced image
-            processed_image = preprocess_image(enhanced_image)
+            # Ensure the cropped image is in RGB mode for enhancement
+            if cropped_image.mode != "RGB":
+                cropped_image = cropped_image.convert("RGB")
 
-            st.write("Extracting text...")
-            st.session_state.extracted_text = extract_text(processed_image, [ocr_language])
+            # Enhance brightness
+            enhancer = ImageEnhance.Brightness(cropped_image)
+            enhanced_image = enhancer.enhance(brightness)
 
-            st.write("Correcting text using Cohere API...")
-            st.session_state.corrected_text = correct_text(st.session_state.extracted_text, llm_language)
+            # Display enhanced image
+            st.image(enhanced_image, caption='Enhanced Image', use_column_width=True)
+
+            # "Submit" button to confirm enhancement
+            if st.button("Submit Enhanced Image"):
+                # Process the enhanced image
+                processed_image = preprocess_image(enhanced_image)
+
+                st.write("Extracting text...")
+                st.session_state.extracted_text = extract_text(processed_image, [ocr_language])
+
+                st.write("Correcting text using Cohere API...")
+                st.session_state.corrected_text = correct_text(st.session_state.extracted_text, llm_language)
+
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
     # Display the extracted text if available
     if st.session_state.extracted_text:
@@ -85,3 +101,4 @@ def show_gui():
     if st.session_state.corrected_text:
         st.write("## Chat with Corrected Text")
         start_chatbot(st.session_state.corrected_text, llm_language)
+
